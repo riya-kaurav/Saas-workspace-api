@@ -600,6 +600,7 @@ Brute-force and credential-stuffing attacks target login endpoints. The general 
 
 ---
 
+
 ## Seed Credentials
 
 After running `npm run db:seed`:
@@ -607,3 +608,5 @@ After running `npm run db:seed`:
 | Role | Email | Password |
 |---|---|---|
 | OWNER | alice@example.com | Password1 |
+| ADMIN | bob@example.com | Password1 |
+| MEMBER | carol@example.com | Password1 |
