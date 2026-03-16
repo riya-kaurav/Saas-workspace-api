@@ -1,0 +1,12 @@
+# Prisma Migration Placeholder
+#
+# Actual migration files are generated automatically by Prisma.
+# Run the following to create your first migration:
+#
+#   npx prisma migrate dev --name init
+#
+# This will:
+# 1. Introspect your schema.prisma
+# 2. Create a SQL migration file in this directory
+# 3. Apply the migration to your database
+# 4. Generate the Prisma Client

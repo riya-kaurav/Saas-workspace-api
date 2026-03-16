@@ -1,0 +1,156 @@
+// ============================================================
+// Prisma Schema — SaaS Team Workspace API
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users ───────────────────────────────────────────────────
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  firstName    String   @map("first_name")
+  lastName     String   @map("last_name")
+  avatarUrl    String?  @map("avatar_url")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  ownedOrganizations  Organization[]       @relation("OrgOwner")
+  memberships         OrganizationMember[]
+  sentInvitations     Invitation[]         @relation("InvitationSender")
+  receivedInvitations Invitation[]         @relation("InvitationReceiver")
+  createdProjects     Project[]            @relation("ProjectCreator")
+  refreshTokens       RefreshToken[]
+
+  @@map("users")
+}
+
+// ─── Refresh Tokens ──────────────────────────────────────────
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ─── Organizations ───────────────────────────────────────────
+model Organization {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logoUrl     String?  @map("logo_url")
+  ownerId     String   @map("owner_id")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner       User                 @relation("OrgOwner", fields: [ownerId], references: [id])
+  members     OrganizationMember[]
+  invitations Invitation[]
+  projects    Project[]
+
+  @@index([ownerId])
+  @@map("organizations")
+}
+
+// ─── Roles ───────────────────────────────────────────────────
+// Roles are scoped per organization membership
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ─── Organization Members ─────────────────────────────────────
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  userId         String   @map("user_id")
+  role           Role     @default(MEMBER)
+  joinedAt       DateTime @default(now()) @map("joined_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("organization_members")
+}
+
+// ─── Invitations ─────────────────────────────────────────────
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model Invitation {
+  id             String           @id @default(uuid())
+  organizationId String           @map("organization_id")
+  invitedByUserId String          @map("invited_by_user_id")
+  invitedUserId  String?          @map("invited_user_id")
+  email          String
+  role           Role             @default(MEMBER)
+  token          String           @unique @default(uuid())
+  status         InvitationStatus @default(PENDING)
+  expiresAt      DateTime         @map("expires_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy     User         @relation("InvitationSender", fields: [invitedByUserId], references: [id])
+  invitedUser   User?        @relation("InvitationReceiver", fields: [invitedUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([token])
+  @@map("invitations")
+}
+
+// ─── Projects ─────────────────────────────────────────────────
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+  COMPLETED
+}
+
+model Project {
+  id             String        @id @default(uuid())
+  organizationId String        @map("organization_id")
+  createdByUserId String       @map("created_by_user_id")
+  name           String
+  description    String?
+  status         ProjectStatus @default(ACTIVE)
+  isPublic       Boolean       @default(false) @map("is_public")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation("ProjectCreator", fields: [createdByUserId], references: [id])
+
+  @@index([organizationId])
+  @@index([createdByUserId])
+  @@map("projects")
+}
