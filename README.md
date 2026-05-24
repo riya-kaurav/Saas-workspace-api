@@ -5,7 +5,7 @@ A production-style backend demonstrating **Authentication**, **JWT token managem
 Built with Node.js, Express, PostgreSQL, Prisma, Redis, and documented with Swagger/OpenAPI.
 
 ---
-## 🤝 Contributing
+##  Contributing
 
 Contributions are welcome! Whether you're fixing a bug, adding a feature, or improving the docs  we'd love your help.
 
@@ -618,3 +618,8 @@ After running `npm run db:seed`:
 | OWNER | alice@example.com | Password1 |
 | ADMIN | bob@example.com | Password1 |
 | MEMBER | carol@example.com | Password1 |
+
+---
+>  **Built for Learning** — This codebase is intentionally written as a learning resource.
+> Every non-trivial decision has an inline comment explaining **why**, not just **what**.
+> Great for developers learning JWT auth, RBAC, and production backend patterns.
