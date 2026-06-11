@@ -33,8 +33,10 @@ function parseDurationToMs(duration) {
 // ─── Signup ───────────────────────────────────────────────────
 
 async function signup({ firstName, lastName, email, password }) {
+  const normalizedEmail = normalizeEmail(email);
+
   // Check for existing user
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     throw new ConflictError('An account with this email already exists');
   }
@@ -43,7 +45,7 @@ async function signup({ firstName, lastName, email, password }) {
   const passwordHash = await bcrypt.hash(password, config.bcrypt.rounds);
 
   const user = await prisma.user.create({
-    data: { firstName, lastName, email, passwordHash },
+    data: { firstName, lastName, email: normalizedEmail, passwordHash },
     select: { id: true, email: true, firstName: true, lastName: true, createdAt: true },
   });
 
@@ -56,7 +58,8 @@ async function signup({ firstName, lastName, email, password }) {
 // ─── Login ────────────────────────────────────────────────────
 
 async function login({ email, password }) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = normalizeEmail(email);
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   // Use constant-time comparison to prevent user enumeration
   const dummyHash = '$2a$12$e.Knxl.tUMOxrRlh.hxK1OBgm80k4PrGPeseF0pauqeRIcyy9eovy';
@@ -161,6 +164,10 @@ async function getMe(userId) {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────
+
+function normalizeEmail(email) {
+  return typeof email === 'string' ? email.trim().toLowerCase() : email;
+}
 
 async function generateTokenPair(user) {
   const accessToken = signAccessToken(user);
