@@ -30,17 +30,18 @@ model User {
   receivedInvitations Invitation[]         @relation("InvitationReceiver")
   createdProjects     Project[]            @relation("ProjectCreator")
   refreshTokens       RefreshToken[]
+  activityLogs        ActivityLog[]
 
   @@map("users")
 }
 
 // ─── Refresh Tokens ──────────────────────────────────────────
 model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String   @map("user_id")
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String    @map("user_id")
+  expiresAt DateTime  @map("expires_at")
+  createdAt DateTime  @default(now()) @map("created_at")
   revokedAt DateTime? @map("revoked_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -63,10 +64,11 @@ model Organization {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   // Relations
-  owner       User                 @relation("OrgOwner", fields: [ownerId], references: [id])
-  members     OrganizationMember[]
-  invitations Invitation[]
-  projects    Project[]
+  owner        User                 @relation("OrgOwner", fields: [ownerId], references: [id])
+  members      OrganizationMember[]
+  invitations  Invitation[]
+  projects     Project[]
+  activityLogs ActivityLog[]
 
   @@index([ownerId])
   @@map("organizations")
@@ -107,21 +109,21 @@ enum InvitationStatus {
 }
 
 model Invitation {
-  id             String           @id @default(uuid())
-  organizationId String           @map("organization_id")
-  invitedByUserId String          @map("invited_by_user_id")
-  invitedUserId  String?          @map("invited_user_id")
-  email          String
-  role           Role             @default(MEMBER)
-  token          String           @unique @default(uuid())
-  status         InvitationStatus @default(PENDING)
-  expiresAt      DateTime         @map("expires_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
+  id              String           @id @default(uuid())
+  organizationId  String           @map("organization_id")
+  invitedByUserId String           @map("invited_by_user_id")
+  invitedUserId   String?          @map("invited_user_id")
+  email           String
+  role            Role             @default(MEMBER)
+  token           String           @unique @default(uuid())
+  status          InvitationStatus @default(PENDING)
+  expiresAt       DateTime         @map("expires_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
-  organization  Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  invitedBy     User         @relation("InvitationSender", fields: [invitedByUserId], references: [id])
-  invitedUser   User?        @relation("InvitationReceiver", fields: [invitedUserId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation("InvitationSender", fields: [invitedByUserId], references: [id])
+  invitedUser  User?        @relation("InvitationReceiver", fields: [invitedUserId], references: [id])
 
   @@index([organizationId])
   @@index([email])
@@ -136,16 +138,33 @@ enum ProjectStatus {
   COMPLETED
 }
 
+enum ActivityType {
+  USER_SIGNUP
+  USER_LOGIN
+
+  ORGANIZATION_CREATED
+  ORGANIZATION_UPDATED
+
+  PROJECT_CREATED
+  PROJECT_UPDATED
+  PROJECT_DELETED
+
+  MEMBER_INVITED
+  MEMBER_REMOVED
+
+  ROLE_CHANGED
+}
+
 model Project {
-  id             String        @id @default(uuid())
-  organizationId String        @map("organization_id")
-  createdByUserId String       @map("created_by_user_id")
-  name           String
-  description    String?
-  status         ProjectStatus @default(ACTIVE)
-  isPublic       Boolean       @default(false) @map("is_public")
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(uuid())
+  organizationId  String        @map("organization_id")
+  createdByUserId String        @map("created_by_user_id")
+  name            String
+  description     String?
+  status          ProjectStatus @default(ACTIVE)
+  isPublic        Boolean       @default(false) @map("is_public")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy    User         @relation("ProjectCreator", fields: [createdByUserId], references: [id])
@@ -153,4 +172,28 @@ model Project {
   @@index([organizationId])
   @@index([createdByUserId])
   @@map("projects")
+}
+
+model ActivityLog {
+  id         String       @id @default(uuid())
+  actionType ActivityType @map("action_type")
+
+  userId         String? @map("user_id")
+  organizationId String? @map("organization_id")
+
+  resourceType String  @map("resource_type")
+  resourceId   String? @map("resource_id")
+
+  metadata Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user         User?         @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("activity_logs")
 }
