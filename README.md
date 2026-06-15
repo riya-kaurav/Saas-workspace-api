@@ -27,6 +27,8 @@ This project is part of **GirlScript Summer of Code (GSSoC)**
 9. [Example Requests](#9-example-requests)
 10. [Docker Setup](#10-docker-setup)
 11. [Design Decisions](#11-design-decisions)
+12. [👥 Contributors](#-contributors)
+
 
 ---
 
@@ -620,7 +622,15 @@ After running `npm run db:seed`:
 | MEMBER | carol@example.com | Password1 |
 
 ---
-##Built for Learning :
+## Built for Learning :
 >  This codebase is intentionally written as a learning resource.
 > Every non-trivial decision has an inline comment explaining **why**, not just **what**.
 > Great for developers learning JWT auth, RBAC, and production backend patterns.
+
+---
+
+## 12. Contributors
+
+Thanks to all contributors ❤️
+
+[![Contributors](https://contrib.rocks/image?repo=riya-kaurav/Saas-workspace-api)](https://github.com/riya-kaurav/Saas-workspace-api/graphs/contributors)
