@@ -110,12 +110,12 @@ apiRouter.use('/invitations', invitationRoutes);
 app.use(`/api/${config.server.apiVersion}`, apiRouter);
 
 // ── 404 Handler ───────────────────────────────────────────────
-app.use((_req, res) => {
-  res.status(404).json({
-    success: false,
-    error: { message: 'Route not found', code: 'NOT_FOUND' },
-  });
-});
+'use strict';
+const notFoundHandler = require('./middleware/notFound');
+
+// ── 404 Handler ───────────────────────────────────────────────
+app.use(notFoundHandler);
+
 
 // ── Global Error Handler (MUST be last) ───────────────────────
 app.use(errorHandler);
