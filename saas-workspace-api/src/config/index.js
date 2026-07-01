@@ -18,6 +18,19 @@ function required(key) {
   return val;
 }
 
+// JWT secrets specifically must also meet a minimum length: a short secret
+// is brute-forceable, and `required()` alone would happily accept e.g. "x".
+function requiredSecret(key, minLength = 32) {
+  const val = required(key);
+  if (val.length < minLength) {
+    throw new Error(
+      `${key} must be at least ${minLength} characters long (got ${val.length}). ` +
+        `Generate one with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
+    );
+  }
+  return val;
+}
+
 function optional(key, defaultValue) {
   return process.env[key] ?? defaultValue;
 }
@@ -50,8 +63,8 @@ const config = {
   },
 
   jwt: {
-    accessSecret: required('JWT_ACCESS_SECRET'),
-    refreshSecret: required('JWT_REFRESH_SECRET'),
+    accessSecret: requiredSecret('JWT_ACCESS_SECRET'),
+    refreshSecret: requiredSecret('JWT_REFRESH_SECRET'),
     accessExpiresIn: optional('JWT_ACCESS_EXPIRES_IN', '15m'),
     refreshExpiresIn: optional('JWT_REFRESH_EXPIRES_IN', '7d'),
   },
