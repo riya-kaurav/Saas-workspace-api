@@ -85,4 +85,40 @@ async function sendVerificationEmail(toEmail, token) {
   return info;
 }
 
-module.exports = { sendVerificationEmail };
+/**
+ * Send a password reset email.
+ *
+ * The raw token is only ever placed here, in the email — it is never
+ * persisted anywhere. The server only ever stores its SHA-256 hash.
+ *
+ * @param {string} toEmail - The user's email address
+ * @param {string} rawToken - The unhashed reset token
+ */
+async function sendPasswordResetEmail(toEmail, rawToken) {
+  const transport = await getTransporter();
+  const resetUrl = `${config.app.baseUrl}/reset-password?token=${rawToken}`;
+
+  const mailOptions = {
+    from: config.email.from,
+    to: toEmail,
+    subject: 'Reset your password - SaaS Workspace',
+    html: `
+      <h1>Password Reset Request</h1>
+      <p>We received a request to reset your password. Click the link below to choose a new one:</p>
+      <a href="${resetUrl}">Reset My Password</a>
+      <p>This link expires in 1 hour.</p>
+      <p>If you didn't request a password reset, you can safely ignore this email — your password will not be changed.</p>
+    `,
+  };
+
+  const info = await transport.sendMail(mailOptions);
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    logger.info('Preview password reset email: %s', previewUrl);
+  }
+
+  return info;
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail };

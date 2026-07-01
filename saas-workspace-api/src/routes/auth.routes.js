@@ -15,6 +15,8 @@ const {
   signupSchema,
   loginSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
 } = require('../validators/schemas');
 
 /**
@@ -148,5 +150,67 @@ router.get('/me', authenticate, authController.getMe);
  *         description: Invalid verification token
  */
 router.get('/verify-email/:token', authController.verifyEmail);
+
+/**
+ * @openapi
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request a password reset link
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string, format: email }
+ *     responses:
+ *       200:
+ *         description: >
+ *           Generic success response is always returned, whether or not the
+ *           email belongs to an account, to avoid leaking which emails are
+ *           registered.
+ *       422:
+ *         description: Validation error
+ */
+router.post(
+  '/forgot-password',
+  authLimiter,
+  validate(forgotPasswordSchema),
+  authController.forgotPassword
+);
+
+/**
+ * @openapi
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password using a token from the reset email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:    { type: string, description: Raw reset token from the emailed link }
+ *               password: { type: string, minLength: 8, example: "NewSecurePass1" }
+ *     responses:
+ *       200:
+ *         description: Password reset successfully; all active sessions are revoked
+ *       401:
+ *         description: Invalid or expired reset token
+ *       422:
+ *         description: Validation error
+ */
+router.post(
+  '/reset-password',
+  authLimiter,
+  validate(resetPasswordSchema),
+  authController.resetPassword
+);
 
 module.exports = router;

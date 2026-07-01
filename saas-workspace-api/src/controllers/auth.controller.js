@@ -65,4 +65,32 @@ async function verifyEmail(req, res, next) {
   }
 }
 
-module.exports = { signup, login, refresh, logout, getMe, verifyEmail };
+async function forgotPassword(req, res, next) {
+  try {
+    const result = await authService.requestPasswordReset(req.body.email);
+    return sendSuccess(res, result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+async function resetPassword(req, res, next) {
+  try {
+    const { token, password } = req.body;
+    const result = await authService.resetPassword(token, password);
+    return sendSuccess(res, result);
+  } catch (err) {
+    return next(err);
+  }
+}
+
+module.exports = {
+  signup,
+  login,
+  refresh,
+  logout,
+  getMe,
+  verifyEmail,
+  forgotPassword,
+  resetPassword,
+};
