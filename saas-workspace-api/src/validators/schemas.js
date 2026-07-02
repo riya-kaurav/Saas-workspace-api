@@ -35,6 +35,23 @@ const refreshTokenSchema = Joi.object({
   refreshToken: Joi.string().required(),
 });
 
+const forgotPasswordSchema = Joi.object({
+  email: Joi.string().email().lowercase().trim().required(),
+});
+
+const resetPasswordSchema = Joi.object({
+  token: Joi.string().required(),
+  password: Joi.string()
+    .min(8)
+    .max(128)
+    .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .required()
+    .messages({
+      'string.pattern.base':
+        'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    }),
+});
+
 // ─── Organizations ────────────────────────────────────────────
 
 const createOrgSchema = Joi.object({
@@ -80,6 +97,8 @@ module.exports = {
   signupSchema,
   loginSchema,
   refreshTokenSchema,
+  forgotPasswordSchema,
+  resetPasswordSchema,
   createOrgSchema,
   updateOrgSchema,
   inviteUserSchema,

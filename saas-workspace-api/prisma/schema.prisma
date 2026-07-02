@@ -23,6 +23,10 @@ model User {
   isEmailVerified Boolean @default(false) @map("is_email_verified")
   emailVerificationToken  String?  @unique @map("email_verification_token")
   emailVerificationExpiry   DateTime?   @map("email_verification_expiry")
+  // Stores only the SHA-256 hash of the reset token, never the raw value —
+  // the raw token is sent to the user's email and never persisted.
+  passwordResetToken   String?   @unique @map("password_reset_token")
+  passwordResetExpiry  DateTime? @map("password_reset_expiry")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 

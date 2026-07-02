@@ -14,6 +14,7 @@
  */
 
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../config/database');
 const redis = require('../config/redis');
 const inMemoryBlacklist = require('../utils/inMemoryBlacklist');
@@ -22,7 +23,15 @@ const { signAccessToken, signRefreshToken, verifyRefreshToken } = require('../ut
 const { ConflictError, AuthenticationError, NotFoundError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const { v4: uuidv4 } = require('uuid');
-const { sendVerificationEmail } = require('../utils/email');
+const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
+
+const PASSWORD_RESET_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
+// Hash a raw token for storage/lookup. Only this hash is ever persisted;
+// the raw value is sent to the user's email and never saved anywhere.
+function hashToken(rawToken) {
+  return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
 
 // Parse e.g. "7d" → milliseconds
 function parseDurationToMs(duration) {
@@ -216,6 +225,83 @@ async function verifyEmail(token) {
   return { message: 'Email verified successfully' };
 }
 
+// ─── Password Reset ───────────────────────────────────────────
+
+const GENERIC_RESET_REQUEST_MESSAGE =
+  'If an account with that email exists, a password reset link has been sent.';
+
+async function requestPasswordReset(email) {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  // Always return the same generic message whether or not the account
+  // exists, so this endpoint can't be used to enumerate registered emails.
+  if (!user) {
+    logger.info({ email }, 'Password reset requested for unknown email');
+    return { message: GENERIC_RESET_REQUEST_MESSAGE };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = hashToken(rawToken);
+  const expiry = new Date(Date.now() + PASSWORD_RESET_EXPIRY_MS);
+
+  // Store only the hash. The raw token exists only in memory here and in
+  // the email we're about to send — it is never persisted.
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordResetToken: hashedToken,
+      passwordResetExpiry: expiry,
+    },
+  });
+
+  logger.info({ userId: user.id }, 'Password reset requested');
+
+  // Fire-and-forget — don't fail the request if email delivery fails.
+  sendPasswordResetEmail(email, rawToken).catch((err) =>
+    logger.error({ err, email }, 'Failed to send password reset email')
+  );
+
+  return { message: GENERIC_RESET_REQUEST_MESSAGE };
+}
+
+async function resetPassword(rawToken, newPassword) {
+  const hashedToken = hashToken(rawToken);
+
+  const user = await prisma.user.findUnique({
+    where: { passwordResetToken: hashedToken },
+  });
+
+  if (!user) {
+    throw new AuthenticationError('Invalid or expired reset token', 'INVALID_RESET_TOKEN');
+  }
+
+  if (!user.passwordResetExpiry || user.passwordResetExpiry < new Date()) {
+    throw new AuthenticationError('Reset token has expired', 'TOKEN_EXPIRED');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, config.bcrypt.rounds);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      // Clear the token immediately so it cannot be reused (single-use).
+      passwordResetToken: null,
+      passwordResetExpiry: null,
+    },
+  });
+
+  // Revoke every active refresh token, so a stolen session can't survive
+  // a password reset that was triggered because the account was compromised.
+  await prisma.refreshToken.updateMany({
+    where: { userId: user.id, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+
+  logger.info({ userId: user.id }, 'Password reset completed');
+  return { message: 'Password has been reset successfully. Please log in with your new password.' };
+}
+
 // ─── Get Me ───────────────────────────────────────────────────
 
 async function getMe(userId) {
@@ -256,4 +342,13 @@ async function generateTokenPair(user) {
   return { accessToken, refreshToken: rawRefreshToken };
 }
 
-module.exports = { signup, login, refreshTokens, logout, getMe, verifyEmail };
+module.exports = {
+  signup,
+  login,
+  refreshTokens,
+  logout,
+  getMe,
+  verifyEmail,
+  requestPasswordReset,
+  resetPassword,
+};
