@@ -3,9 +3,13 @@
 /**
  * src/middleware/rateLimiter.js
  *
- * Two rate limiters:
- *   - `apiLimiter`  : General limiter applied to all routes
- *   - `authLimiter` : Stricter limiter for auth endpoints to slow brute-force
+ * Three rate limiters:
+ *   - `apiLimiter`         : General limiter applied to all routes
+ *   - `authLimiter`        : Stricter, IP-keyed limiter for auth endpoints
+ *                             to slow brute-force
+ *   - `loginAccountLimiter`: Per-account (email-keyed) limiter on /login,
+ *                             to catch credential stuffing that rotates
+ *                             source IPs while targeting the same account
  *
  * Uses in-memory store by default. For multi-instance deployments,
  * swap to redis store: npm install rate-limit-redis
@@ -43,4 +47,29 @@ const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // Only count failed auth attempts
 });
 
-module.exports = { apiLimiter, authLimiter };
+// Normalizes the submitted email into a stable rate-limit key. Falls back to
+// a fixed key when the body has no usable email yet (e.g. malformed JSON),
+// so unauthenticated requests still share a bucket instead of bypassing the
+// limiter entirely.
+function loginAccountKey(req) {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  return email || 'unknown-account';
+}
+
+const loginAccountLimiter = rateLimit({
+  windowMs: config.rateLimit.accountWindowMs,
+  max: config.rateLimit.accountMaxRequests,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: loginAccountKey,
+  message: {
+    success: false,
+    error: {
+      message: 'Too many login attempts for this account, please try again later',
+      code: 'RATE_LIMITED',
+    },
+  },
+  skipSuccessfulRequests: true, // Only count failed login attempts
+});
+
+module.exports = { apiLimiter, authLimiter, loginAccountLimiter };
