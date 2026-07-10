@@ -10,7 +10,7 @@ const router = express.Router();
 const authController = require('../controllers/auth.controller');
 const authenticate = require('../middleware/authenticate');
 const validate = require('../middleware/validate');
-const { authLimiter } = require('../middleware/rateLimiter');
+const { authLimiter, loginAccountLimiter } = require('../middleware/rateLimiter');
 const {
   signupSchema,
   loginSchema,
@@ -69,7 +69,13 @@ router.post('/signup', authLimiter, validate(signupSchema), authController.signu
  *       401:
  *         description: Invalid credentials
  */
-router.post('/login', authLimiter, validate(loginSchema), authController.login);
+router.post(
+  '/login',
+  authLimiter,
+  loginAccountLimiter,
+  validate(loginSchema),
+  authController.login
+);
 
 /**
  * @openapi
@@ -92,7 +98,7 @@ router.post('/login', authLimiter, validate(loginSchema), authController.login);
  *       401:
  *         description: Invalid or expired refresh token
  */
-router.post('/refresh', validate(refreshTokenSchema), authController.refresh);
+router.post('/refresh', authLimiter, validate(refreshTokenSchema), authController.refresh);
 
 /**
  * @openapi
@@ -149,7 +155,7 @@ router.get('/me', authenticate, authController.getMe);
  *       404:
  *         description: Invalid verification token
  */
-router.get('/verify-email/:token', authController.verifyEmail);
+router.get('/verify-email/:token', authLimiter, authController.verifyEmail);
 
 /**
  * @openapi

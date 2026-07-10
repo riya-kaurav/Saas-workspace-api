@@ -83,6 +83,11 @@ const config = {
     maxRequests: optionalInt('RATE_LIMIT_MAX_REQUESTS', 100),
     authWindowMs: optionalInt('AUTH_RATE_LIMIT_WINDOW_MS', 5 * 60 * 1000), // 5 min
     authMaxRequests: optionalInt('AUTH_RATE_LIMIT_MAX', 5),
+    // Per-account limiter on /login, keyed by the submitted email instead of
+    // IP. Credential stuffing rotates source IPs but keeps hammering the
+    // same account, so the IP-keyed authLimiter alone does not catch it.
+    accountWindowMs: optionalInt('AUTH_ACCOUNT_RATE_LIMIT_WINDOW_MS', 15 * 60 * 1000), // 15 min
+    accountMaxRequests: optionalInt('AUTH_ACCOUNT_RATE_LIMIT_MAX', 10),
   },
 
   cors: {
