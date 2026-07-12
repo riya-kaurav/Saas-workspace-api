@@ -45,8 +45,9 @@ function parseDurationToMs(duration) {
 // ─── Signup ───────────────────────────────────────────────────
 
 async function signup({ firstName, lastName, email, password }) {
+  const normalizedEmail = email.trim().toLowerCase();
   // Check for existing user
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     throw new ConflictError('An account with this email already exists');
   }
@@ -62,7 +63,7 @@ async function signup({ firstName, lastName, email, password }) {
     data: { 
       firstName, 
       lastName, 
-      email, 
+      email: normalizedEmail, 
       passwordHash,
       isEmailVerified: false,
       emailVerificationToken: verificationToken,
@@ -74,8 +75,8 @@ async function signup({ firstName, lastName, email, password }) {
   logger.info({ userId: user.id, email: user.email }, 'User signed up');
 
   // Send verification email (fire-and-forget — don't block signup if email fails)
-  sendVerificationEmail(email, verificationToken).catch((err) =>
-    logger.error({ err, email }, 'Failed to send verification email')
+  sendVerificationEmail(normalizedEmail, verificationToken).catch((err) =>
+    logger.error({ err, email: normalizedEmail }, 'Failed to send verification email')
   );
 
 
@@ -86,7 +87,8 @@ async function signup({ firstName, lastName, email, password }) {
 // ─── Login ────────────────────────────────────────────────────
 
 async function login({ email, password }) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   // Use constant-time comparison to prevent user enumeration
   const dummyHash = '$2a$12$e.Knxl.tUMOxrRlh.hxK1OBgm80k4PrGPeseF0pauqeRIcyy9eovy';
