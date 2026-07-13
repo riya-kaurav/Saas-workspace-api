@@ -121,4 +121,41 @@ async function sendPasswordResetEmail(toEmail, rawToken) {
   return info;
 }
 
-module.exports = { sendVerificationEmail, sendPasswordResetEmail };
+/**
+ * Send a team invitation email.
+ *
+ * The raw token is only ever placed here, in the email — it is never
+ * persisted anywhere. The server only ever stores its SHA-256 hash.
+ *
+ * @param {string} toEmail - The invitee's email address
+ * @param {string} rawToken - The unhashed invitation token
+ * @param {string} organizationName - Name of the organization they're invited to
+ */
+async function sendInvitationEmail(toEmail, rawToken, organizationName) {
+  const transport = await getTransporter();
+  const acceptUrl = `${config.app.baseUrl}/accept-invitation?token=${rawToken}`;
+
+  const mailOptions = {
+    from: config.email.from,
+    to: toEmail,
+    subject: `You've been invited to join ${organizationName} - SaaS Workspace`,
+    html: `
+      <h1>You're invited to join ${organizationName}</h1>
+      <p>Click the link below to accept the invitation:</p>
+      <a href="${acceptUrl}">Accept Invitation</a>
+      <p>This link expires in ${config.invitation.expiresInDays} days.</p>
+      <p>If you weren't expecting this invitation, you can ignore this email.</p>
+    `,
+  };
+
+  const info = await transport.sendMail(mailOptions);
+
+  const previewUrl = nodemailer.getTestMessageUrl(info);
+  if (previewUrl) {
+    logger.info('Preview invitation email: %s', previewUrl);
+  }
+
+  return info;
+}
+
+module.exports = { sendVerificationEmail, sendPasswordResetEmail, sendInvitationEmail };

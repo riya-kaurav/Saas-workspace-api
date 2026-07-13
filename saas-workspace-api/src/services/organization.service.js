@@ -9,11 +9,31 @@
  * - Invitation system
  */
 
+const crypto = require('crypto');
 const prisma = require('../config/database');
 const { generateUniqueSlug } = require('../utils/slug');
 const { NotFoundError, ConflictError, AuthorizationError } = require('../utils/errors');
 const logger = require('../utils/logger');
 const config = require('../config');
+const { sendInvitationEmail } = require('../utils/email');
+
+// Hash a raw invitation token for storage/lookup. Only this hash is ever
+// persisted, the raw value is sent in the invitation email and never saved.
+function hashInvitationToken(rawToken) {
+  return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
+
+// Fields safe to return from an invitation-returning endpoint. Never
+// includes tokenHash, since that would defeat the purpose of hashing it.
+const INVITATION_SAFE_SELECT = {
+  id: true,
+  organizationId: true,
+  email: true,
+  role: true,
+  status: true,
+  expiresAt: true,
+  createdAt: true,
+};
 
 // ─── Create Organization ──────────────────────────────────────
 
@@ -232,13 +252,25 @@ async function inviteUser(orgId, { email, role }, invitedByUserId) {
     }
   }
 
-  // Check for pending invitation
+  // Re-inviting the same email while a pending invitation exists supersedes
+  // it: the old token is invalidated and a fresh one is issued, rather than
+  // blocking the inviter or leaving two live tokens for the same invite.
   const pendingInvite = await prisma.invitation.findFirst({
     where: { organizationId: orgId, email, status: 'PENDING' },
   });
   if (pendingInvite) {
-    throw new ConflictError('A pending invitation already exists for this email');
+    await prisma.invitation.update({
+      where: { id: pendingInvite.id },
+      data: { status: 'EXPIRED' },
+    });
+    logger.info(
+      { orgId, email, invitationId: pendingInvite.id },
+      'Superseded pending invitation with a new one'
+    );
   }
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const tokenHash = hashInvitationToken(rawToken);
 
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + config.invitation.expiresInDays);
@@ -250,21 +282,32 @@ async function inviteUser(orgId, { email, role }, invitedByUserId) {
       invitedUserId: existingUser?.id ?? null,
       email,
       role,
+      tokenHash,
       expiresAt,
     },
-    include: {
+    select: {
+      ...INVITATION_SAFE_SELECT,
       organization: { select: { name: true } },
       invitedBy: { select: { firstName: true, lastName: true, email: true } },
     },
   });
 
   logger.info({ orgId, email, invitedByUserId }, 'Invitation created');
+
+  // Fire-and-forget, same pattern as password reset: don't fail the
+  // request if email delivery fails, and never persist the raw token.
+  sendInvitationEmail(email, rawToken, invitation.organization.name).catch((err) =>
+    logger.error({ err, orgId, email }, 'Failed to send invitation email')
+  );
+
   return invitation;
 }
 
-async function acceptInvitation(token, userId) {
+async function acceptInvitation(rawToken, userId) {
+  const tokenHash = hashInvitationToken(rawToken);
+
   const invitation = await prisma.invitation.findUnique({
-    where: { token },
+    where: { tokenHash },
     include: {
       organization: {
         select: { isActive: true },
@@ -301,6 +344,25 @@ async function acceptInvitation(token, userId) {
   return { organizationId: invitation.organizationId };
 }
 
+// ─── Cleanup Expired Invitations ──────────────────────────────
+
+// Marks any invitation still PENDING past its expiresAt as EXPIRED. Called
+// on a schedule from server.js so stale invitations don't sit around
+// indefinitely between accept attempts (which is the only other place
+// expiry is checked).
+async function cleanupExpiredInvitations() {
+  const result = await prisma.invitation.updateMany({
+    where: { status: 'PENDING', expiresAt: { lt: new Date() } },
+    data: { status: 'EXPIRED' },
+  });
+
+  if (result.count > 0) {
+    logger.info({ count: result.count }, 'Expired stale pending invitations');
+  }
+
+  return result.count;
+}
+
 module.exports = {
   createOrganization,
   getOrganizationById,
@@ -312,4 +374,5 @@ module.exports = {
   removeMember,
   inviteUser,
   acceptInvitation,
+  cleanupExpiredInvitations,
 };

@@ -14,8 +14,10 @@ const config = require('./config');
 const logger = require('./utils/logger');
 const redis = require('./config/redis');
 const prisma = require('./config/database');
+const { cleanupExpiredInvitations } = require('./services/organization.service');
 
 let server;
+let invitationCleanupInterval;
 
 async function start() {
   try {
@@ -36,6 +38,17 @@ async function start() {
         ` Server started`
       );
     });
+
+    // Periodically mark stale pending invitations as expired. Run once at
+    // startup, then on the configured interval. A failure here should
+    // never take down the server.
+    const runCleanup = () => {
+      cleanupExpiredInvitations().catch((err) =>
+        logger.error({ err }, 'Invitation cleanup job failed')
+      );
+    };
+    runCleanup();
+    invitationCleanupInterval = setInterval(runCleanup, config.invitation.cleanupIntervalMs);
   } catch (err) {
     logger.fatal({ err }, 'Failed to start server');
     process.exit(1);
@@ -46,6 +59,10 @@ async function start() {
 
 async function shutdown(signal) {
   logger.info({ signal }, 'Shutdown signal received');
+
+  if (invitationCleanupInterval) {
+    clearInterval(invitationCleanupInterval);
+  }
 
   if (server) {
     server.close(async () => {
