@@ -63,6 +63,56 @@ describe('Organization Service - Soft Deletion and Invitation Bugs', () => {
     });
   });
 
+  describe('getMembers', () => {
+    it('should scope the query to the given organization, paginate, and select only safe user fields', async () => {
+      prisma.organizationMember.findMany.mockResolvedValueOnce([]);
+      prisma.organizationMember.count.mockResolvedValueOnce(0);
+
+      await orgService.getMembers('org-1', { page: 2, limit: 20 });
+
+      expect(prisma.organizationMember.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { organizationId: 'org-1' },
+          skip: 20,
+          take: 20,
+          include: {
+            user: {
+              select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
+            },
+          },
+        })
+      );
+      expect(prisma.organizationMember.count).toHaveBeenCalledWith({
+        where: { organizationId: 'org-1' },
+      });
+    });
+
+    it('should never select passwordHash or other sensitive user fields', async () => {
+      prisma.organizationMember.findMany.mockResolvedValueOnce([]);
+      prisma.organizationMember.count.mockResolvedValueOnce(0);
+
+      await orgService.getMembers('org-1', { page: 1, limit: 20 });
+
+      const call = prisma.organizationMember.findMany.mock.calls[0][0];
+      const selectedFields = Object.keys(call.include.user.select);
+
+      expect(selectedFields).not.toContain('passwordHash');
+      expect(selectedFields).not.toContain('resetToken');
+      expect(selectedFields).toEqual(['id', 'firstName', 'lastName', 'email', 'avatarUrl']);
+    });
+
+    it('should return total and totalPages for pagination controls', async () => {
+      const members = Array.from({ length: 20 }, (_, i) => ({ id: `member-${i}` }));
+      prisma.organizationMember.findMany.mockResolvedValueOnce(members);
+      prisma.organizationMember.count.mockResolvedValueOnce(45);
+
+      const result = await orgService.getMembers('org-1', { page: 1, limit: 20 });
+
+      expect(result.items).toHaveLength(20);
+      expect(result.total).toBe(45);
+    });
+  });
+
   describe('acceptInvitation', () => {
     it('should throw NotFoundError if the organization is soft-deleted', async () => {
       const mockInvitation = {
