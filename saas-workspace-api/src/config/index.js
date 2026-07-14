@@ -98,6 +98,7 @@ const config = {
 
   invitation: {
     expiresInDays: optionalInt('INVITATION_EXPIRES_IN_DAYS', 7),
+    cleanupIntervalMs: optionalInt('INVITATION_CLEANUP_INTERVAL_MS', 60 * 60 * 1000), // 1 hour
   },
 
   logging: {
