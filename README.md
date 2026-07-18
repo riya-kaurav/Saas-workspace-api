@@ -580,7 +580,7 @@ docker compose exec api node prisma/seed.js
 # Open a shell
 docker compose exec api sh
 
-# Reset everything (⚠️ destroys data)
+# Reset everything ( destroys data)
 docker compose down -v
 ```
 
