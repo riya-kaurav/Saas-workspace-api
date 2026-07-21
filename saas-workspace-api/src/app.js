@@ -36,6 +36,7 @@ const authRoutes = require('./routes/auth.routes');
 const orgRoutes = require('./routes/organization.routes');
 const projectRoutes = require('./routes/project.routes');
 const invitationRoutes = require('./routes/invitation.routes');
+const roleRoutes = require('./routes/role.routes');
 
 const app = express();
 
@@ -106,6 +107,7 @@ apiRouter.use('/auth', authRoutes);
 apiRouter.use('/organizations', orgRoutes);
 apiRouter.use('/organizations', projectRoutes); // nested: /organizations/:orgId/projects
 apiRouter.use('/invitations', invitationRoutes);
+apiRouter.use('/roles', roleRoutes);
 
 app.use(`/api/${config.server.apiVersion}`, apiRouter);
 
