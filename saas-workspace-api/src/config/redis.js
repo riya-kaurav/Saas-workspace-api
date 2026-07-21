@@ -15,6 +15,9 @@ const logger = require('../utils/logger');
 let client = null;
 let isConnected = false;
 
+// In-memory fallback for token blacklisting when Redis is disabled
+const memoryStore = new Map();
+
 async function connect() {
   if (!config.redis.enabled) {
     logger.info('Redis disabled — token blacklisting will use in-memory fallback');
@@ -32,22 +35,31 @@ async function connect() {
 }
 
 async function get(key) {
-  if (!isConnected || !client) return null;
+  if (!isConnected || !client) return memoryStore.get(key) || null;
   return client.get(key);
 }
 
 async function set(key, value, ttlSeconds) {
-  if (!isConnected || !client) return;
+  if (!isConnected || !client) {
+    memoryStore.set(key, value);
+    if (ttlSeconds) {
+      setTimeout(() => memoryStore.delete(key), ttlSeconds * 1000);
+    }
+    return;
+  }
   await client.set(key, value, { EX: ttlSeconds });
 }
 
 async function del(key) {
-  if (!isConnected || !client) return;
+  if (!isConnected || !client) {
+    memoryStore.delete(key);
+    return;
+  }
   await client.del(key);
 }
 
 async function exists(key) {
-  if (!isConnected || !client) return false;
+  if (!isConnected || !client) return memoryStore.has(key);
   const result = await client.exists(key);
   return result === 1;
 }
@@ -57,6 +69,7 @@ async function disconnect() {
     await client.quit();
     isConnected = false;
   }
+  memoryStore.clear();
 }
 
 module.exports = { connect, get, set, del, exists, disconnect };
