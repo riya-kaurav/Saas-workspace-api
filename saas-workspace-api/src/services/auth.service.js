@@ -109,6 +109,10 @@ async function refreshTokens(rawRefreshToken) {
     throw new AuthenticationError('Refresh token is invalid or expired', 'REFRESH_TOKEN_INVALID');
   }
 
+  if (!stored.user) {
+    throw new AuthenticationError('User account no longer exists', 'USER_NOT_FOUND');
+  }
+
   if (!stored.user.isActive) {
     throw new AuthenticationError('Account is deactivated', 'ACCOUNT_DEACTIVATED');
   }
