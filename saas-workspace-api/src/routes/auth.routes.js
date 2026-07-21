@@ -38,6 +38,19 @@ const {
  *     responses:
  *       201:
  *         description: User created with access and refresh tokens
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 user:
+ *                   id: "clx123abc456"
+ *                   firstName: "Jane"
+ *                   lastName: "Doe"
+ *                   email: "jane@example.com"
+ *                   createdAt: "2026-07-20T10:30:00.000Z"
+ *                 accessToken: "eyJhbGciOiJIUzI1NiIs..."
+ *                 refreshToken: "eyJhbGciOiJIUzI1NiIs..."
  *       409:
  *         description: Email already in use
  *       422:
@@ -64,6 +77,18 @@ router.post('/signup', authLimiter, validate(signupSchema), authController.signu
  *     responses:
  *       200:
  *         description: Login successful
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 user:
+ *                   id: "clx123abc456"
+ *                   firstName: "Jane"
+ *                   lastName: "Doe"
+ *                   email: "jane@example.com"
+ *                 accessToken: "eyJhbGciOiJIUzI1NiIs..."
+ *                 refreshToken: "eyJhbGciOiJIUzI1NiIs..."
  *       401:
  *         description: Invalid credentials
  */
@@ -87,6 +112,13 @@ router.post('/login', authLimiter, validate(loginSchema), authController.login);
  *     responses:
  *       200:
  *         description: New token pair issued
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 accessToken: "eyJhbGciOiJIUzI1NiIs..."
+ *                 refreshToken: "eyJhbGciOiJIUzI1NiIs..."
  *       401:
  *         description: Invalid or expired refresh token
  */
