@@ -54,6 +54,17 @@ router.use(authenticate, requireOrgMembership);
  *     responses:
  *       201:
  *         description: Project created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: "proj_123456"
+ *                 name: "Website Redesign"
+ *                 description: "Company website redesign project"
+ *                 isPublic: false
+ *                 organizationId: "org_123456"
+ *                 createdAt: "2026-07-22T10:30:00.000Z"
  *       403:
  *         description: Members cannot create projects
  */

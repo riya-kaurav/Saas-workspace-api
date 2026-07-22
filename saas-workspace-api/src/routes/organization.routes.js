@@ -57,6 +57,15 @@ router.use(authenticate);
  *     responses:
  *       201:
  *         description: Organization created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: "org_123456"
+ *                 name: "Acme Corp"
+ *                 description: "Organization for internal projects"
+ *                 createdAt: "2026-07-22T10:30:00.000Z"
  */
 router.post('/', validate(createOrgSchema), orgController.createOrganization);
 
@@ -209,6 +218,16 @@ router.delete(
  *     responses:
  *       201:
  *         description: Invitation created
+ *         content:
+ *           application/json:
+ *             example:
+ *               success: true
+ *               data:
+ *                 id: "inv_123456"
+ *                 email: "john@example.com"
+ *                 role: "MEMBER"
+ *                 status: "PENDING"
+ *                 token: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
  *       409:
  *         description: Already a member or invitation pending
  */
