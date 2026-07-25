@@ -21,7 +21,7 @@ const validate = require('../middleware/validate');
 const {
   createProjectSchema,
   updateProjectSchema,
-  paginationSchema,
+  listProjectsSchema,
 } = require('../validators/schemas');
 
 // All project routes require auth + org membership
@@ -118,7 +118,7 @@ router.post(
  *       422:
  *         description: Invalid pagination query parameters
  */
-router.get('/', validate(paginationSchema, 'query'), projectController.listProjects);
+router.get('/', validate(listProjectsSchema, 'query'), projectController.listProjects);
 
 /**
  * @openapi
