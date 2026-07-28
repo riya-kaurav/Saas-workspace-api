@@ -25,6 +25,15 @@ async function getOrganization(req, res, next) {
   }
 }
 
+async function getOrganizationBySlug(req, res, next) {
+  try {
+    const org = await orgService.getOrganizationBySlug(req.params.slug);
+    return sendSuccess(res, org);
+  } catch (err) {
+    return next(err);
+  }
+}
+
 async function listMyOrganizations(req, res, next) {
   try {
     const { page, limit } = req.query;
@@ -104,6 +113,7 @@ async function acceptInvitation(req, res, next) {
 module.exports = {
   createOrganization,
   getOrganization,
+  getOrganizationBySlug,
   listMyOrganizations,
   updateOrganization,
   deleteOrganization,
