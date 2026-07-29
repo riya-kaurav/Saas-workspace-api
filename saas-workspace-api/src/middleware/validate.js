@@ -6,7 +6,9 @@
  * Factory that creates Express middleware from a Joi schema.
  * Usage: router.post('/route', validate(mySchema), controller)
  *
- * On success, the validated (and coerced) value replaces req.body or req.query.
+ * On success, the validated (and coerced) value replaces req.body, req.query, or req.params.
+ * WARNING: This middleware mutates the request object (req[source]) to ensure
+ * downstream handlers use the sanitized/coerced values.
  * On failure, a 422 ValidationError is forwarded to the error handler.
  */
 
@@ -28,11 +30,13 @@ function validate(schema, source = 'body') {
       const details = error.details.map((d) => ({
         field: d.path.join('.'),
         message: d.message,
+        source,
       }));
-      return next(new ValidationError('Validation failed', details));
+      return next(new ValidationError(`Validation failed in ${source}`, details));
     }
 
-    // Replace original data with sanitized/coerced value
+    // Replace original data with the validated, sanitized, and coerced value.
+    // Callers should be aware that req[source] (e.g., req.body) is mutated here.
     req[source] = value;
     return next();
   };

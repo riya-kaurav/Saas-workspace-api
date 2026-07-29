@@ -80,7 +80,9 @@ function requireRole(...allowedRoles) {
     const userRole = req.membership?.role;
 
     if (!userRole) {
-      return next(new AuthorizationError('Membership not loaded. Use requireOrgMembership first.'));
+      const orgId = req.params?.orgId || 'missing';
+      const userId = req.user?.id || 'missing';
+      return next(new AuthorizationError(`Membership not loaded. Use requireOrgMembership first. Context: orgId=${orgId}, userId=${userId}`));
     }
 
     if (!allowedRoles.includes(userRole)) {
