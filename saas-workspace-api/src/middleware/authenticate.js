@@ -30,7 +30,8 @@ async function authenticate(req, _res, next) {
     const decoded = verifyAccessToken(token);
 
     // Check Redis blacklist (populated on logout)
-    // Check Redis blacklist (populated on logout)
+    // Note: Expects the key format to be `blacklist:${token}`
+    // which must match the keying scheme used in auth.service.js logout.
     const isBlacklisted = await redis.exists(`blacklist:${token}`);
 
     if (isBlacklisted) {
