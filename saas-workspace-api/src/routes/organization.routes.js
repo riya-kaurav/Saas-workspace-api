@@ -38,6 +38,30 @@ router.use(authenticate);
 
 /**
  * @openapi
+ * /organizations/slug/{slug}:
+ *   get:
+ *     tags: [Organizations]
+ *     summary: Get organization details by slug (requires authentication to prevent info leakage)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema: { type: string }
+ *         description: Organization slug (URL-friendly identifier)
+ *     responses:
+ *       200:
+ *         description: Organization details
+ *       404:
+ *         description: Organization not found
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/slug/:slug', orgController.getOrganizationBySlug);
+
+/**
+ * @openapi
  * /organizations:
  *   post:
  *     tags: [Organizations]

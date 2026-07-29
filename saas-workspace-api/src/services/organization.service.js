@@ -79,6 +79,30 @@ async function getOrganizationById(orgId) {
   return org;
 }
 
+// ─── Get Organization by Slug ──────────────────────────────────
+
+async function getOrganizationBySlug(slug) {
+  const org = await prisma.organization.findUnique({
+    where: { slug },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      description: true,
+      logoUrl: true,
+      createdAt: true,
+      isActive: true,
+      owner: {
+        select: { id: true, firstName: true, lastName: true, avatarUrl: true },
+      },
+      _count: { select: { members: true, projects: true } },
+    },
+  });
+
+  if (!org || !org.isActive) throw new NotFoundError('Organization');
+  return org;
+}
+
 // ─── List User Organizations ──────────────────────────────────
 
 async function getUserOrganizations(userId, { page, limit }) {
@@ -366,6 +390,7 @@ async function cleanupExpiredInvitations() {
 module.exports = {
   createOrganization,
   getOrganizationById,
+  getOrganizationBySlug,
   getUserOrganizations,
   updateOrganization,
   deleteOrganization,
