@@ -10,31 +10,59 @@
  * by default. To test with Redis, set REDIS_ENABLED=true in your .env.test
  */
 
-const request = require('supertest');
-const app = require('../src/app'); // Adjust path if needed
-
-// Use a test database and keep Redis disabled for this suite
+process.env.DATABASE_URL = 'postgres://fake:fake@localhost:5432/fake';
+process.env.JWT_ACCESS_SECRET = 'a'.repeat(32);
+process.env.JWT_REFRESH_SECRET = 'b'.repeat(32);
 process.env.REDIS_ENABLED = 'false';
+
+const request = require('supertest');
+const app = require('../src/app');
+const prisma = require('../src/config/database');
+const { signAccessToken } = require('../src/utils/jwt');
+
+jest.mock('../src/config/database', () => ({
+  user: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  },
+  refreshToken: {
+    findUnique: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
+  },
+  organizationMember: {
+    findMany: jest.fn(),
+  },
+}));
+
+jest.mock('../src/utils/email', () => ({
+  sendVerificationEmail: jest.fn().mockResolvedValue(),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(),
+}));
 
 describe('Token blacklisting after logout', () => {
   let accessToken;
   let refreshToken;
+  const mockUser = {
+    id: 'user-123',
+    email: 'test@example.com',
+    firstName: 'Test',
+    lastName: 'User',
+    avatarUrl: null,
+    isActive: true,
+  };
 
-  // Create a fresh user and login before each test
-  beforeEach(async () => {
-    // Sign up
-    const signupRes = await request(app)
-      .post('/api/v1/auth/signup')
-      .send({
-        firstName: 'Test',
-        lastName: 'User',
-        email: `test_${Date.now()}@example.com`,
-        password: 'SecurePass1',
-      });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    prisma.user.findUnique.mockResolvedValue(mockUser);
+    prisma.user.create.mockResolvedValue(mockUser);
+    prisma.refreshToken.create.mockResolvedValue({ id: 'rt-1', token: 'ref-token-123' });
+    prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
 
-    expect(signupRes.status).toBe(201);
-    accessToken = signupRes.body.data.accessToken;
-    refreshToken = signupRes.body.data.refreshToken;
+    accessToken = signAccessToken(mockUser);
+    refreshToken = 'ref-token-123';
   });
 
   it('should allow access to GET /auth/me before logout', async () => {
@@ -79,6 +107,7 @@ describe('Token blacklisting after logout', () => {
     expect(meRes.status).toBe(401);
 
     // Try on /organizations (another protected route)
+    prisma.organizationMember.findMany.mockResolvedValue([]);
     const orgsRes = await request(app)
       .get('/api/v1/organizations')
       .set('Authorization', `Bearer ${accessToken}`);
@@ -92,13 +121,12 @@ describe('Token blacklisting after logout', () => {
       .set('Authorization', `Bearer ${accessToken}`)
       .send({ refreshToken });
 
-    // Login again
-    const loginRes = await request(app)
-      .post('/api/v1/auth/login')
-      .send({ email: 'test_already_created@example.com', password: 'SecurePass1' });
-    // Note: this specific email won't exist; this test just confirms
-    // the blacklist doesn't affect new tokens. Adapt for your test DB setup.
-    // Simplest approach: use the token from beforeEach's signup in a new variable.
+    const newAccessToken = signAccessToken({ ...mockUser, id: 'user-456' });
+    const meRes = await request(app)
+      .get('/api/v1/auth/me')
+      .set('Authorization', `Bearer ${newAccessToken}`);
+
+    expect(meRes.status).toBe(200);
   });
 });
 

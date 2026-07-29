@@ -89,7 +89,7 @@ JWT (JSON Web Token) is stateless — the server can verify a token without a da
 
 **Trade-off**: Tokens cannot be immediately invalidated before expiry. We mitigate this with:
 - **Short-lived access tokens** (15 minutes): limits the damage window if a token is stolen
-- **Redis blacklist**: on logout, the access token's JTI (or the token itself) is stored in Redis with a TTL matching the token's remaining lifetime. The `authenticate` middleware checks this blacklist on every request.
+- **Redis & In-memory blacklist**: on logout, the access token is stored in Redis (or an in-memory blacklist fallback when `REDIS_ENABLED=false`) with a TTL matching the token's remaining lifetime. The `authenticate` middleware checks this blacklist on every request. Note: In-memory fallback is suitable for single-instance/dev mode; enable Redis for multi-instance deployments.
 - **Refresh token rotation**: when a refresh token is used, it's immediately revoked and a new one is issued. Replay attacks using a stolen refresh token are detected because the old token no longer exists.
 
 ### How RBAC Is Enforced
@@ -263,7 +263,7 @@ npm run dev
 | `JWT_REFRESH_EXPIRES_IN` | | `7d` | Refresh token lifetime |
 | `BCRYPT_ROUNDS` | | `12` | bcrypt work factor. Higher = slower hashing. 12 is safe for 2024. |
 | `REDIS_URL` | | `redis://localhost:6379` | Redis connection string |
-| `REDIS_ENABLED` | | `false` | Set `true` to enable token blacklisting |
+| `REDIS_ENABLED` | | `false` | Set `true` to use Redis for token blacklisting. When `false`, an in-memory blacklist fallback is used (single-instance safe only). |
 | `RATE_LIMIT_WINDOW_MS` | | `900000` | Rate limit window (ms). Default: 15 minutes. |
 | `RATE_LIMIT_MAX_REQUESTS` | | `100` | Max requests per window (general) |
 | `AUTH_RATE_LIMIT_MAX` | | `10` | Max requests per window (auth routes) |

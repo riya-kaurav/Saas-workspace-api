@@ -17,7 +17,7 @@ let isConnected = false;
 
 async function connect() {
   if (!config.redis.enabled) {
-    logger.info('Redis disabled — token blacklisting will use in-memory fallback');
+    logger.warn('REDIS_ENABLED=false: using in-memory blacklist (not multi-instance safe)');
     return;
   }
 
