@@ -68,6 +68,13 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_PRETTY: 'false'
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      EMAIL_HOST: ${EMAIL_HOST:?EMAIL_HOST is required}
+      EMAIL_PORT: ${EMAIL_PORT:-587}
+      EMAIL_USER: ${EMAIL_USER:?EMAIL_USER is required}
+      EMAIL_PASS: ${EMAIL_PASS:?EMAIL_PASS is required}
+      EMAIL_FROM: ${EMAIL_FROM:?EMAIL_FROM is required}
+      EMAIL_VERIFICATION_EXPIRY_HOURS: ${EMAIL_VERIFICATION_EXPIRY_HOURS:-24}
+      APP_BASE_URL: ${APP_BASE_URL:?APP_BASE_URL is required}
     depends_on:
       postgres:
         condition: service_healthy

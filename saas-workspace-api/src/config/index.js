@@ -120,4 +120,15 @@ const config = {
   }
 };
 
+if (config.isProduction) {
+  const requiredMailConfig = ['EMAIL_HOST', 'EMAIL_USER', 'EMAIL_PASS', 'EMAIL_FROM', 'APP_BASE_URL'];
+  const missingMailConfig = requiredMailConfig.filter((key) => !process.env[key]);
+
+  if (missingMailConfig.length) {
+    throw new Error(
+      `Missing required production email configuration: ${missingMailConfig.join(', ')}`
+    );
+  }
+}
+
 module.exports = config;
