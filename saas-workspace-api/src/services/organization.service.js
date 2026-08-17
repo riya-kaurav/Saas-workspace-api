@@ -173,8 +173,13 @@ async function deleteOrganization(orgId, requestingUserId) {
 
 // ─── Members ──────────────────────────────────────────────────
 
-async function getMembers(orgId, { page, limit }) {
+async function getMembers(orgId, { page, limit, requesterRole }) {
   const skip = (page - 1) * limit;
+  const isAdmin = ['OWNER', 'ADMIN'].includes(requesterRole);
+
+  const userSelect = isAdmin
+    ? { id: true, firstName: true, lastName: true, email: true, avatarUrl: true }
+    : { id: true, firstName: true, lastName: true, avatarUrl: true };
 
   const [members, total] = await prisma.$transaction([
     prisma.organizationMember.findMany({
@@ -183,9 +188,7 @@ async function getMembers(orgId, { page, limit }) {
       take: limit,
       orderBy: { joinedAt: 'asc' },
       include: {
-        user: {
-          select: { id: true, firstName: true, lastName: true, email: true, avatarUrl: true },
-        },
+        user: { select: userSelect },
       },
     }),
     prisma.organizationMember.count({ where: { organizationId: orgId } }),

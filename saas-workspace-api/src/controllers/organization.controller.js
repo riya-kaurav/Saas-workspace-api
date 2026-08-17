@@ -65,7 +65,8 @@ async function deleteOrganization(req, res, next) {
 async function getMembers(req, res, next) {
   try {
     const { page, limit } = req.query;
-    const { items, total } = await orgService.getMembers(req.params.orgId, { page, limit });
+    const requesterRole = req.membership?.role;
+    const { items, total } = await orgService.getMembers(req.params.orgId, { page, limit, requesterRole });
     return sendSuccess(res, items, 200, paginationMeta({ page, limit, total }));
   } catch (err) {
     return next(err);
