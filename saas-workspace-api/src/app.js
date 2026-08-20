@@ -105,7 +105,7 @@ const apiRouter = express.Router();
 
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/organizations', orgRoutes);
-apiRouter.use('/organizations', projectRoutes); // nested: /organizations/:orgId/projects
+apiRouter.use('/organizations/:orgId/projects', projectRoutes);
 apiRouter.use('/invitations', invitationRoutes);
 apiRouter.use('/roles', roleRoutes);
 

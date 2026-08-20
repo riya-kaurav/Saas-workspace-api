@@ -80,6 +80,12 @@ const paginationSchema = Joi.object({
 
 // ─── Projects ─────────────────────────────────────────────────
 
+const listProjectsSchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(20),
+  status: Joi.string().valid('ACTIVE', 'ARCHIVED', 'COMPLETED').optional(),
+});
+
 const createProjectSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).required(),
   description: Joi.string().trim().max(1000).optional().allow(''),
@@ -104,6 +110,7 @@ module.exports = {
   inviteUserSchema,
   updateMemberRoleSchema,
   paginationSchema,
+  listProjectsSchema,
   createProjectSchema,
   updateProjectSchema,
 };
